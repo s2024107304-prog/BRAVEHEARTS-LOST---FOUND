@@ -7,17 +7,30 @@
     body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0;}
     .video-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
     .video-background video { width:100%; height:100%; object-fit:cover; }
-    .card {   background: rgba(255, 255, 255, 0.364); max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+    .card { background:white; max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
     h2 { text-align:center; color:#13007d; }
     label { display:block; margin-top:12px; font-weight:bold; }
     input, textarea { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
     .row { display:flex; gap:10px; }
     .row > div { flex:1; }
     button { padding:12px 20px; margin-top:15px; border:none; border-radius:8px; background:#13007d; color:white; font-weight:bold; cursor:pointer; }
+    button:disabled { background: #555; cursor: not-allowed; }
     .camera-container { margin-top:15px; text-align:center; }
     #snapshot { display:none; }
     .preview img { max-width:220px; border:3px solid #13007d; border-radius:8px; margin-top:10px; }
     #summary { text-align:left; margin-top:20px; }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #13007d;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -118,6 +131,16 @@ takePic.addEventListener('click', () => {
 // Submit to Google Sheets
 form.addEventListener('submit', (e) => {
   e.preventDefault();
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+
+  // Add loading spinner
+  const spinner = document.createElement('span');
+  spinner.classList.add('spinner');
+  submitButton.textContent = "Sending...";
+  submitButton.appendChild(spinner);
+
   const fd = new FormData(form);
   const report = {};
   ['email','what','when','where','who','otherw','description','photo_base64'].forEach(k => {
@@ -144,7 +167,11 @@ form.addEventListener('submit', (e) => {
     submitAgain.style.display = 'inline-block';
     viewReports.style.display = 'inline-block';
   })
-  .catch(err => alert("Error sending report: " + err));
+  .catch(err => {
+    alert("Error sending report: " + err);
+    submitButton.disabled = false;
+    submitButton.textContent = "Send Report";
+  });
 });
 
 // Buttons behavior
@@ -154,8 +181,3 @@ viewReports.addEventListener('click', () => window.location.href = 'lostreport.h
 
 </body>
 </html>
-
-
-
-
-
