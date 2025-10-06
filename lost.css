@@ -1,189 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lost Items - Bravehearts Lost & Found</title>
+  <link rel="stylesheet" type="text/css" href="lost.css">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0;}
+    .video-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
+    .video-background video { width:100%; height:100%; object-fit:cover; }
+    .card { background:white; max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+    h2 { text-align:center; color:#13007d; }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    input, textarea { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex:1; }
+    button { padding:12px 20px; margin-top:15px; border:none; border-radius:8px; background:#13007d; color:white; font-weight:bold; cursor:pointer; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .camera-container { margin-top:15px; text-align:center; }
+    #snapshot { display:none; }
+    .preview img { max-width:220px; border:3px solid #13007d; border-radius:8px; margin-top:10px; }
+    #summary { text-align:left; margin-top:20px; }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #13007d;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
 
+<div class="video-background">
+  <video autoplay muted loop playsinline>
+    <source src="video/FAITH.mp4" type="video/mp4">
+  </video>
+</div>
 
-/* Video background */
-.video-background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -2;
-  overflow: hidden;
-}
+<div class="card">
+  <button id="backBtn">&larr; Back</button>
+  <h2>Lost Item Report</h2>
+  <p class="note">Fill in the fields and take a picture of the item.</p>
 
-.video-background video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+  <form id="lostForm">
+    <label for="email">First Asia Email</label>
+    <input id="email" name="email" type="email" placeholder="s20xxxxxxxx@firstasia.edu.ph" required />
 
-/* Overlay for darker effect */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg,  rgba(0, 0, 0, 0,));
-  z-index: -1;
-}
-/* Body */
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  color: #222;
-}
+    <div class="row">
+      <div>
+        <label for="what">What (Anong nawala?)</label>
+        <input id="what" name="what" type="text" placeholder="Ex: wallet, phone" required />
+      </div>
+      <div>
+        <label for="when">When (Kailan nawala?)</label>
+        <input id="when" name="when" type="datetime-local" required />
+      </div>
+    </div>
 
-/* Card layout */
-.card {
-  max-width: 750px;
-  margin: 50px auto;
-  background: rgba(255, 255, 255, 0.363);
-  padding: 35px 40px;
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
-  position: relative;
-  z-index: 1;
-  color: #13007d;
-  font-size: 1.15rem;
-}
+    <div class="row">
+      <div>
+        <label for="where">Where (Saan nawala?)</label>
+        <input id="where" name="where" type="text" placeholder="Ex: 3rd floor hallway" />
+      </div>
+      <div>
+        <label for="who">Who (Sino ang may-ari?)</label>
+        <input id="who" name="who" type="text" placeholder="Optional" />
+      </div>
+    </div>
 
-h2 {
-  color: #13007d;
-  font-size: 2.3rem;
-  margin-bottom: 20px;
-  text-align: center;
-}
+    <label for="otherw">More Info</label>
+    <input id="otherw" name="otherw" type="text" placeholder="Ex: Contains an ID card inside" />
 
-.note {
-  font-size: 1.1rem;
-  margin-bottom: 25px;
-  color: #13007d;
-  text-align: center;
-}
+    <label for="description">Description (Detalye)</label>
+    <textarea id="description" name="description" rows="4" placeholder="Unique characteristics of the item (color, brand, damage, etc.)"></textarea>
 
-label {
-  font-weight: bold;
-  font-size: 1.15rem;
-  display: block;
-  margin-top: 14px;
-  margin-bottom: 6px;
-  color: #13007d;
-}
+    <div class="camera-container">
+      <video id="camera" autoplay playsinline></video>
+    </div>
+    <button type="button" id="takePic">Take Picture</button>
+    <canvas id="snapshot"></canvas>
+    <input type="hidden" id="photo_base64" name="photo_base64">
+    <div class="preview" id="preview"></div>
 
-input, textarea {
-  width: 100%;
-  padding: 14px;
-  font-size: 1.15rem;
-  border-radius: 8px;
-  border: 1px solid #13007d;
-  margin-bottom: 22px;
-  box-sizing: border-box;
-  color: #13007d;
-  background: #fff;
-}
+    <button type="submit">Send Report</button>
+  </form>
 
-input::placeholder,
-textarea::placeholder {
-  color: #13007d;
-  opacity: 0.7;
-}
+  <div id="summary" style="display:none;"></div>
 
-input:focus, textarea:focus {
-  border-color: #13007d;
-  outline: none;
-  box-shadow: 0 0 6px #13007d;
-}
+  <div style="display:flex; justify-content:center; gap:15px; margin-top:10px;">
+    <button id="submitAgain" style="display:none;">Submit Another Report</button>
+    <button id="viewReports" style="display:none;">View All Reports</button>
+  </div>
+</div>
 
-/* Send Report button */
-button[type="submit"] {
-  width: 100%;
-  padding: 18px;
-  font-size: 1.25rem;
-  border-radius: 8px;
-  border: none;
-  background: #13007d;
-  color: #fff;
-  font-weight: bold;
-  cursor: pointer;
-  transition: 0.3s;
-  margin-top: 18px;
-}
-button[type="submit"]:hover {
-  background: #0d0060;
-}
+<script>
+const form = document.getElementById('lostForm');
+const camera = document.getElementById('camera');
+const takePic = document.getElementById('takePic');
+const snapshot = document.getElementById('snapshot');
+const preview = document.getElementById('preview');
+const photoBase64Input = document.getElementById('photo_base64');
+const summary = document.getElementById('summary');
+const submitAgain = document.getElementById('submitAgain');
+const viewReports = document.getElementById('viewReports');
+const backBtn = document.getElementById('backBtn');
 
-/* Take Picture button */
-#takePic {
-  width: 180px;
-  padding: 12px;
-  border: 2px solid #13007d;
-  border-radius: 8px;
-  background: #fff;
-  color: #13007d;
-  font-weight: bold;
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: block;
-  margin: 15px auto;
-  transition: 0.3s;
-}
-#takePic:hover {
-  background: #13007d;
-  color: #fff;
-}
+// Back button
+backBtn.addEventListener('click', () => window.history.back());
 
-/* Submit Another Report button */
-#newReport {
-  width: 50%;                /* mas maliit kaysa Send Report */
-  padding: 14px;
-  font-size: 1.15rem;
-  border-radius: 8px;
-  border: 2px solid #13007d;
-  background: #fff;
-  color: #13007d;
-  font-weight: bold;
-  cursor: pointer;
-  display: block;
-  margin: 20px auto 0 auto;  /* centered */
-  transition: all 0.3s ease;
-}
-#newReport:hover {
-  background: #13007d;
-  color: #fff;
-  border-color: #0d0060;
-}
+// Open camera
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => { camera.srcObject = stream; })
+  .catch(err => console.error('Camera error:', err));
 
-/* Row inputs */
-.row {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-.row div {
-  flex: 1;
-}
+// Take picture
+takePic.addEventListener('click', () => {
+  const ctx = snapshot.getContext('2d');
+  snapshot.width = camera.videoWidth;
+  snapshot.height = camera.videoHeight;
+  ctx.drawImage(camera, 0, 0);
+  const dataUrl = snapshot.toDataURL('image/png');
+  photoBase64Input.value = dataUrl;
+  preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
+});
 
-/* Camera */
-.camera-container {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-}
+// Submit to Google Sheets
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
 
-#camera {
-  width: 100%;
-  max-width: 400px;
-  border-radius: 8px;
-  border: 2px solid #13007d;
-}
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
 
-/* Preview image */
-.preview img {
-  margin-top: 18px;
-  max-width: 220px;
-  border: 3px solid #13007d;
-  border-radius: 8px;
-}
+  // Add loading spinner
+  const spinner = document.createElement('span');
+  spinner.classList.add('spinner');
+  submitButton.textContent = "Sending...";
+  submitButton.appendChild(spinner);
 
+  const fd = new FormData(form);
+  const report = {};
+  ['email','what','when','where','who','otherw','description','photo_base64'].forEach(k => {
+    report[k] = fd.get(k) || '';
+  });
 
+  fetch("https://script.google.com/macros/s/AKfycbzcaarGQM3riZ5RVnsVBhzHytK9PSCaJwUe2C0YnThymvw_9SJcFNI7HN2k7yLIi9fJ/exec", {
+    method: "POST",
+    body: new URLSearchParams(report)
+  })
+  .then(resp => resp.text())
+  .then(data => {
+    console.log(data);
+    form.style.display = 'none';
+    preview.innerHTML = '';
+    summary.style.display = 'block';
+    summary.innerHTML = "<h2>Report Summary</h2><ul>" +
+      Object.keys(report).map(k => {
+        if(k === 'photo_base64') return `<li><strong>Photo:</strong><br><img src="${report[k]}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>`;
+        else return `<li><strong>${k}:</strong> ${report[k]}</li>`;
+      }).join('') +
+      "</ul><p style='color:green;font-weight:bold;'>Report sent. Thank you!</p>";
+
+    submitAgain.style.display = 'inline-block';
+    viewReports.style.display = 'inline-block';
+  })
+  .catch(err => {
+    alert("Error sending report: " + err);
+    submitButton.disabled = false;
+    submitButton.textContent = "Send Report";
+  });
+});
+
+// Buttons behavior
+submitAgain.addEventListener('click', () => window.location.reload());
+viewReports.addEventListener('click', () => window.location.href = 'lostreport.html');
+</script>
+
+</body>
+</html>
