@@ -2,24 +2,195 @@
 <html>
 <head>
   <title>Lost Items - Bravehearts Lost & Found</title>
-  <link rel="stylesheet" type="text/css" href="index.css">
+  <link rel="stylesheet" type="text/css" href="lost.css">
+  <style>
+    body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0;}
+    .video-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
+    .video-background video { width:100%; height:100%; object-fit:cover; }
+    .card { background:white; max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+    h2 { text-align:center; color:#13007d; }
+    label { display:block; margin-top:12px; font-weight:bold; }
+    input, textarea, select { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex:1; }
+    button { padding:12px 20px; margin-top:15px; border:none; border-radius:8px; background:#13007d; color:white; font-weight:bold; cursor:pointer; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .camera-container { margin-top:15px; text-align:center; }
+    #snapshot { display:none; }
+    .preview img { max-width:220px; border:3px solid #13007d; border-radius:8px; margin-top:10px; }
+    #summary { text-align:left; margin-top:20px; }
+    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #13007d; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    option.occupied { background-color: #ccc; color: #555; }
+    option.available { background-color: #d4f5d4; }
+  </style>
 </head>
 <body>
+
 <div class="video-background">
-    <video autoplay muted loop playsinline>
-      <source src="video/FAITH.mp4" type="video/mp4">
-    </video>
+  <video autoplay muted loop playsinline>
+    <source src="video/FAITH.mp4" type="video/mp4">
+  </video>
+</div>
+
+<div class="card">
+  <button id="backBtn">&larr; Back</button>
+  <h2>Lost Item Report</h2>
+  <p class="note">Fill in the fields and take a picture of the item.</p>
+
+  <form id="lostForm">
+    <label for="email">First Asia Email</label>
+    <input id="email" name="email" type="email" placeholder="s20xxxxxxxx@firstasia.edu.ph" required />
+
+    <div class="row">
+      <div>
+        <label for="what">What (Anong nawala?)</label>
+        <input id="what" name="what" type="text" placeholder="Ex: wallet, phone" required />
+      </div>
+      <div>
+        <label for="when">When (Kailan nawala?)</label>
+        <input id="when" name="when" type="datetime-local" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="where">Where (Saan nawala?)</label>
+        <input id="where" name="where" type="text" placeholder="Ex: 3rd floor hallway" />
+      </div>
+      <div>
+        <label for="who">Who (Sino ang may-ari?)</label>
+        <input id="who" name="who" type="text" placeholder="Optional" />
+      </div>
+    </div>
+
+    <label for="locker">Select Locker</label>
+    <select id="locker" name="locker" required>
+      <option value="">-- Choose Locker --</option>
+    </select>
+
+    <label for="otherw">More Info</label>
+    <input id="otherw" name="otherw" type="text" placeholder="Ex: Contains an ID card inside" />
+
+    <label for="description">Description (Detalye)</label>
+    <textarea id="description" name="description" rows="4" placeholder="Unique characteristics of the item (color, brand, damage, etc.)"></textarea>
+
+    <div class="camera-container">
+      <video id="camera" autoplay playsinline></video>
+    </div>
+    <button type="button" id="takePic">Take Picture</button>
+    <canvas id="snapshot"></canvas>
+    <input type="hidden" id="photo_base64" name="photo_base64">
+    <div class="preview" id="preview"></div>
+
+    <button type="submit">Send Report</button>
+  </form>
+
+  <div id="summary" style="display:none;"></div>
+
+  <div style="display:flex; justify-content:center; gap:15px; margin-top:10px;">
+    <button id="submitAgain" style="display:none;">Submit Another Report</button>
+    <button id="viewReports" style="display:none;">View All Reports</button>
   </div>
+</div>
 
-  <div class="overlay"></div>
+<script>
+const form = document.getElementById('lostForm');
+const camera = document.getElementById('camera');
+const takePic = document.getElementById('takePic');
+const snapshot = document.getElementById('snapshot');
+const preview = document.getElementById('preview');
+const photoBase64Input = document.getElementById('photo_base64');
+const summary = document.getElementById('summary');
+const submitAgain = document.getElementById('submitAgain');
+const viewReports = document.getElementById('viewReports');
+const backBtn = document.getElementById('backBtn');
+const lockerSelect = document.getElementById('locker');
 
-   <h1>FOUND ITEMS</h1>
-  <div class="content-box">
-    <p>Here you can check all <b>found items</b> that were submitted.  
-    This page will later include a list or gallery of items that can be claimed by their rightful owners.</p>
+// Back button
+backBtn.addEventListener('click', () => window.history.back());
 
+// Open camera
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => { camera.srcObject = stream; })
+  .catch(err => console.error('Camera error:', err));
 
-    <a href="prototype.html"><button>⬅ Back to Home</button></a>
-  </div>
+// Take picture
+takePic.addEventListener('click', () => {
+  const ctx = snapshot.getContext('2d');
+  snapshot.width = camera.videoWidth;
+  snapshot.height = camera.videoHeight;
+  ctx.drawImage(camera, 0, 0);
+  const dataUrl = snapshot.toDataURL('image/png');
+  photoBase64Input.value = dataUrl;
+  preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
+});
+
+// Load lockers from Google Sheet
+async function loadLockers() {
+  try {
+    const response = await fetch('https://script.google.com/macros/s/AKfycbydkw4JqJTv_e9pqbm6HHCgKehT6tJ01DJr723uFkZHc2Gxs5OHB_Kf5Ha7rMesKRVO/exec'); // replace YOUR_SCRIPT_ID
+    const lockers = await response.json();
+    lockers.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.Locker;
+      opt.textContent = `Locker ${l.Locker} - ${l.Status}`;
+      if (l.Status.toLowerCase() === 'occupied') opt.disabled = true;
+      opt.className = l.Status.toLowerCase() === 'occupied' ? 'occupied' : 'available';
+      lockerSelect.appendChild(opt);
+    });
+  } catch(err) {
+    console.error("Error loading lockers:", err);
+  }
+}
+loadLockers();
+
+// Submit to Google Sheets
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  const spinner = document.createElement('span');
+  spinner.classList.add('spinner');
+  submitButton.textContent = "Sending...";
+  submitButton.appendChild(spinner);
+
+  const fd = new FormData(form);
+  const report = {};
+  ['email','what','when','where','who','otherw','description','locker','photo_base64'].forEach(k => {
+    report[k] = fd.get(k) || '';
+  });
+
+  fetch("https://script.google.com/macros/s/AKfycbydkw4JqJTv_e9pqbm6HHCgKehT6tJ01DJr723uFkZHc2Gxs5OHB_Kf5Ha7rMesKRVO/exec", {
+    method: "POST",
+    body: new URLSearchParams(report)
+  })
+  .then(resp => resp.json())
+  .then(data => {
+    console.log(data);
+    form.style.display = 'none';
+    preview.innerHTML = '';
+    summary.style.display = 'block';
+    summary.innerHTML = "<h2>Report Summary</h2><ul>" +
+      Object.keys(report).map(k => {
+        if(k === 'photo_base64') return `<li><strong>Photo:</strong><br><img src="${report[k]}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>`;
+        else return `<li><strong>${k}:</strong> ${report[k]}</li>`;
+      }).join('') +
+      "</ul><p style='color:green;font-weight:bold;'>Report sent. Thank you!</p>";
+
+    submitAgain.style.display = 'inline-block';
+    viewReports.style.display = 'inline-block';
+  })
+  .catch(err => {
+    alert("Error sending report: " + err);
+    submitButton.disabled = false;
+    submitButton.textContent = "Send Report";
+  });
+});
+
+// Buttons behavior
+submitAgain.addEventListener('click', () => window.location.reload());
+viewReports.addEventListener('click', () => window.location.href = 'lostreport.html');
+</script>
 </body>
 </html>
