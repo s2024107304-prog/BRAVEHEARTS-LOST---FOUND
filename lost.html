@@ -147,7 +147,7 @@ form.addEventListener('submit', (e) => {
     report[k] = fd.get(k) || '';
   });
 
-  fetch("https://script.google.com/macros/s/AKfycbzUImYvq59c-RgYaY6WLoH2FaAcK7fYYIEkdnjaidjEeeAOpp0gY71pmueeeWQYii3h/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbwKIAvVYK2Ut6bAf5D7btj6gBXMHWTi_-HJ9BM51_MnK5bJ1gqZinHOSokKhmkUoFjh/exec", {
     method: "POST",
     body: new URLSearchParams(report)
   })
@@ -181,6 +181,7 @@ viewReports.addEventListener('click', () => window.location.href = 'lostreport.h
 
 </body>
 </html>
+
 
 
 
