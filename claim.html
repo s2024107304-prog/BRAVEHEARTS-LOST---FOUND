@@ -7,7 +7,7 @@
     body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0;}
     .video-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
     .video-background video { width:100%; height:100%; object-fit:cover; }
-    .card { background:rgba(255, 255, 255, 0.323); max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
+    .card { background:rgba(255, 255, 255, 0.323); max-width:700px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
     h2 { text-align:center; color:#13007d; }
     label { display:block; margin-top:12px; font-weight:bold; }
     input, select { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
@@ -15,12 +15,15 @@
     .row > div { flex:1; }
     button { padding:12px 20px; margin-top:15px; border:none; border-radius:8px; background:#13007d; color:white; font-weight:bold; cursor:pointer; }
     button:disabled { background: #555; cursor: not-allowed; }
-    .camera-container { margin-top:15px; text-align:center; }
+    .camera-container { display:flex; gap:10px; margin-top:15px; }
+    .camera-left { flex:2; text-align:center; }
+    .camera-right { flex:1; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
     #snapshot { display:none; }
     .preview img { max-width:220px; border:3px solid #13007d; border-radius:8px; margin-top:10px; }
     .locker-btn { flex:1; margin:2px; padding:8px; border-radius:6px; font-weight:bold; color:white; }
     #lockerInfo { margin-top:20px; background:rgba(255,255,255,0.6); padding:10px; border-radius:8px; display:none; }
     #photoWarning { color:red; text-align:center; margin-top:10px; display:none; font-weight:bold; }
+    #otpDisplay { font-size: 40px; color: red; font-weight: bold; text-align:center; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -59,10 +62,21 @@
 
     <div id="lockerInfo"></div>
 
+    <!-- Camera & buttons layout -->
     <div class="camera-container">
-      <video id="camera" autoplay playsinline></video>
+      <!-- Left side: video + take picture -->
+      <div class="camera-left">
+        <video id="camera" autoplay playsinline style="width:100%; max-height:300px; border-radius:8px;"></video>
+        <button type="button" id="takePic" style="margin-top:8px; padding:8px 16px; font-size:14px;">Take Picture</button>
+      </div>
+      <!-- Right side: switch cam + gallery -->
+      <div class="camera-right">
+        <button type="button" id="switchCam" style="padding:6px 12px; font-size:12px;">Switch Camera</button>
+        <button type="button" id="selectGallery" style="padding:6px 12px; font-size:12px;">Select Gallery</button>
+      </div>
     </div>
-    <button type="button" id="takePic">Take Picture</button>
+
+    <input type="file" id="galleryInput" accept="image/*" style="display:none;">
     <canvas id="snapshot"></canvas>
     <input type="hidden" id="photo_base64" name="photo_base64">
     <div class="preview" id="preview"></div>
@@ -78,70 +92,92 @@
 </div>
 
 <script>
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzSjPZSmft7QyTaTI9RWaEgmAgNibRb8ncaEC2iw_gVXoPSKtoAZ75RhWhhjz047onz/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyoRVEqozEyG-alXzLF6geTxHZhX5JUN7EhMbWMzg_mBKif0277nT2-hCLKb8O8Wj7o/exec";
 
 const form = document.getElementById('claimForm');
-const camera = document.getElementById('camera');
 const takePic = document.getElementById('takePic');
 const snapshot = document.getElementById('snapshot');
 const preview = document.getElementById('preview');
 const photoBase64Input = document.getElementById('photo_base64');
+const galleryInput = document.getElementById('galleryInput');
 const photoWarning = document.getElementById('photoWarning');
 const summary = document.getElementById('summary');
 const submitAgain = document.getElementById('submitAgain');
-const backBtn = document.getElementById('backBtn');
 const lockerContainer = document.getElementById('lockerContainer');
 const lockerInput = document.getElementById('locker');
 const lockerInfo = document.getElementById('lockerInfo');
 const claimBtn = document.getElementById('claimBtn');
 
-backBtn.addEventListener('click', () => window.history.back());
+let allData = [];
+let lockers = [];
+let lockerSelected = null;
 
-// Camera
+// Back button
+document.getElementById('backBtn').addEventListener('click', () => window.history.back());
+
+// Camera & Gallery
+let currentStream = null;
+let usingFrontCamera = true;
+const camera = document.getElementById('camera');
+
 async function initCamera() {
+  if(currentStream) currentStream.getTracks().forEach(track => track.stop());
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    camera.srcObject = stream;
+    currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: usingFrontCamera ? "user" : "environment" } });
+    camera.srcObject = currentStream;
+    camera.style.transform = usingFrontCamera ? 'scaleX(-1)' : 'scaleX(1)';
   } catch(err) {
     console.error("Camera error:", err);
+    alert("Cannot access camera.");
   }
 }
 initCamera();
+
+document.getElementById('switchCam').addEventListener('click', () => {
+  usingFrontCamera = !usingFrontCamera;
+  initCamera();
+});
+
+document.getElementById('selectGallery').addEventListener('click', () => galleryInput.click());
+galleryInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event){
+    photoBase64Input.value = event.target.result;
+    preview.innerHTML = `<img src="${event.target.result}" alt="Selected Image">`;
+    photoWarning.style.display = "none";
+  }
+  reader.readAsDataURL(file);
+});
 
 takePic.addEventListener('click', () => {
   const ctx = snapshot.getContext('2d');
   snapshot.width = camera.videoWidth;
   snapshot.height = camera.videoHeight;
-  ctx.drawImage(camera, 0, 0);
+  if(usingFrontCamera){ ctx.translate(snapshot.width,0); ctx.scale(-1,1); }
+  ctx.drawImage(camera,0,0);
+  if(usingFrontCamera) ctx.setTransform(1,0,0,1,0,0);
   const dataUrl = snapshot.toDataURL('image/png');
   photoBase64Input.value = dataUrl;
   preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
-  photoWarning.style.display = "none"; // hide warning once picture taken
+  photoWarning.style.display = "none";
 });
 
-// Locker system
-let allData = [];
-let lockers = [];
-let lockerSelected = null;
-
+// Fetch lockers
 async function fetchLockers() {
   try {
     const res = await fetch(WEB_APP_URL);
     const data = await res.json();
     allData = data;
 
-    const claimableLockers = data.filter(r => r["Locker"] && r["Locker"] !== "CLAIM")
-      .map(r => parseInt(r["Locker"]));
-
-    lockers = Array.from({ length: 8 }, (_, i) => ({
-      number: i + 1,
-      claimable: claimableLockers.includes(i + 1)
-    }));
+    lockers = Array.from({ length: 8 }, (_, i) => {
+      const hasRecord = data.some(r => parseInt(r["Locker"]) === (i + 1));
+      return { number: i + 1, claimable: hasRecord };
+    });
 
     renderLockers();
-  } catch(err) {
-    console.error("Locker fetch error:", err);
-  }
+  } catch(err) { console.error(err); }
 }
 
 function renderLockers() {
@@ -151,8 +187,15 @@ function renderLockers() {
     btn.type = 'button';
     btn.textContent = `Locker ${locker.number}`;
     btn.className = 'locker-btn';
-    btn.disabled = !locker.claimable;
-    btn.style.background = locker.claimable ? (lockerSelected === i ? '#28a745' : '#13007d') : '#555';
+
+    if (!locker.claimable) {
+      btn.disabled = true;
+      btn.style.background = '#555';
+    } else {
+      btn.disabled = false;
+      btn.style.background = (lockerSelected === i ? '#28a745' : '#13007d');
+    }
+
     btn.addEventListener('click', () => {
       if(!locker.claimable) return;
       lockerSelected = i;
@@ -160,6 +203,7 @@ function renderLockers() {
       renderLockers();
       showLockerInfo(locker.number);
     });
+
     lockerContainer.appendChild(btn);
   });
 }
@@ -180,17 +224,15 @@ function showLockerInfo(lockerNum) {
   }
 }
 
+// Initial fetch
 fetchLockers();
 setInterval(fetchLockers, 5000);
 
-// Submit
-form.addEventListener('submit', (e) => {
+// Form submit
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if(!lockerInput.value) return alert("Please choose your locker!");
-  if(!photoBase64Input.value) {
-    photoWarning.style.display = "block";
-    return;
-  }
+  if(!lockerInput.value) { alert("Please choose a locker!"); return; }
+  if(!photoBase64Input.value) { photoWarning.style.display = "block"; return; }
 
   claimBtn.disabled = true;
   claimBtn.textContent = "Processing...";
@@ -198,29 +240,42 @@ form.addEventListener('submit', (e) => {
   const fd = new FormData(form);
   const report = {};
   ['email','name','grade','section','photo_base64','locker'].forEach(k => report[k] = fd.get(k) || '');
-  report.claim = "true"; 
+  report.claim = "true";
 
-  fetch(WEB_APP_URL, { method:"POST", body: new URLSearchParams(report) })
-    .then(r => r.text())
-    .then(() => {
-      form.style.display='none';
-      preview.innerHTML='';
-      summary.style.display='block';
-      summary.innerHTML = "<h2>Claim Summary</h2><ul>" +
-        Object.keys(report).map(k=>'photo_base64'===k?`<li><strong>Photo:</strong><br><img src="${report[k]}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>`:`<li><strong>${k}:</strong> ${report[k]}</li>`).join('') +
-        `</ul><p style='color:green;font-weight:bold;'>Your claim has been submitted. Thank you!</p>`;
+  try {
+    const res = await fetch(WEB_APP_URL, { method:"POST", body: new URLSearchParams(report) });
+    const result = await res.json();
+    const otp = result.otp || "N/A";
 
-      submitAgain.style.display='inline-block';
-    })
-    .catch(err => {
-      alert("Error processing claim: "+err);
-      claimBtn.disabled=false;
-      claimBtn.textContent="Claim Item";
-    });
+    lockers.find(l => l.number == report.locker).claimable = false;
+    renderLockers();
+
+    form.style.display = 'none';
+    preview.innerHTML = '';
+    summary.style.display = 'block';
+    summary.innerHTML = `
+      <h2>Claim Summary</h2>
+      <ul>
+        <li><strong>Email:</strong> ${report.email}</li>
+        <li><strong>Name:</strong> ${report.name}</li>
+        <li><strong>Grade:</strong> ${report.grade}</li>
+        <li><strong>Section:</strong> ${report.section}</li>
+        <li><strong>Locker:</strong> ${report.locker}</li>
+        <li><strong>Photo:</strong><br><img src="${report.photo_base64}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>
+      </ul>
+      <p style='color:green;font-weight:bold;'>Your claim has been submitted. Thank you!</p>
+      <p style='color:red;font-weight:bold;text-align:center;'>Open Locker ${report.locker} and place the item inside. Thank you!</p>
+      <div id="otpDisplay">OTP: ${otp}</div>
+    `;
+    submitAgain.style.display = 'inline-block';
+  } catch(err) {
+    alert("Error processing claim: "+err);
+    claimBtn.disabled=false;
+    claimBtn.textContent="Claim Item";
+  }
 });
 
 submitAgain.addEventListener('click', ()=>window.location.reload());
 </script>
 </body>
 </html>
-
