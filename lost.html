@@ -81,6 +81,14 @@
     <div class="camera-container">
       <video id="camera" autoplay playsinline></video>
     </div>
+
+    <!-- New Camera Buttons -->
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+      <button type="button" id="switchCam">Switch Camera</button>
+      <button type="button" id="openGallery">From Gallery</button>
+      <input type="file" id="galleryInput" accept="image/*" style="display:none;">
+    </div>
+
     <button type="button" id="takePic">Take Picture</button>
     <canvas id="snapshot"></canvas>
     <input type="hidden" id="photo_base64" name="photo_base64">
@@ -112,20 +120,87 @@ const backBtn = document.getElementById('backBtn');
 // Back button
 backBtn.addEventListener('click', () => window.history.back());
 
-// Open camera
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => { camera.srcObject = stream; })
-  .catch(err => console.error('Camera error:', err));
+// Camera with switch front/back
+let currentFacingMode = "environment";
+let currentStream = null;
 
-// Take picture
-takePic.addEventListener('click', () => {
-  const ctx = snapshot.getContext('2d');
+// Start camera function
+function startCamera() {
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: currentFacingMode }
+  })
+  .then(stream => {
+    currentStream = stream;
+    camera.srcObject = stream;
+
+    // Invert for front camera
+    camera.style.transform = currentFacingMode === "user"
+      ? "scaleX(-1)"
+      : "scaleX(1)";
+  })
+  .catch(err => console.error("Camera error:", err));
+}
+
+// Initial camera load
+startCamera();
+
+// Switch camera
+document.getElementById("switchCam").addEventListener("click", () => {
+  currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+  startCamera();
+});
+
+// Take picture (handles inversion)
+takePic.addEventListener("click", () => {
+  const ctx = snapshot.getContext("2d");
   snapshot.width = camera.videoWidth;
   snapshot.height = camera.videoHeight;
+
+  if (currentFacingMode === "user") {
+    ctx.translate(snapshot.width, 0);
+    ctx.scale(-1, 1);
+  }
+
   ctx.drawImage(camera, 0, 0);
-  const dataUrl = snapshot.toDataURL('image/png');
+  const dataUrl = snapshot.toDataURL("image/png");
   photoBase64Input.value = dataUrl;
-  preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
+  preview.innerHTML = `<img src="${dataUrl}">`;
+});
+
+// Gallery upload
+const galleryInput = document.getElementById("galleryInput");
+document.getElementById("openGallery").addEventListener("click", () => {
+  galleryInput.click();
+});
+
+galleryInput.addEventListener("change", () => {
+  const file = galleryInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      snapshot.width = img.width;
+      snapshot.height = img.height;
+      const ctx = snapshot.getContext("2d");
+
+      // Invert gallery image
+      ctx.translate(snapshot.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0);
+
+      const dataUrl = snapshot.toDataURL("image/png");
+      photoBase64Input.value = dataUrl;
+      preview.innerHTML = `<img src="${dataUrl}">`;
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
 });
 
 // Submit to Google Sheets
@@ -135,7 +210,6 @@ form.addEventListener('submit', (e) => {
   const submitButton = form.querySelector('button[type="submit"]');
   submitButton.disabled = true;
 
-  // Add loading spinner
   const spinner = document.createElement('span');
   spinner.classList.add('spinner');
   submitButton.textContent = "Sending...";
@@ -181,12 +255,3 @@ viewReports.addEventListener('click', () => window.location.href = 'lostreport.h
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
