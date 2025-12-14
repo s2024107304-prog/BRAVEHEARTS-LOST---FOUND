@@ -10,7 +10,7 @@
     .card { background:rgba(255, 255, 255, 0.323); max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
     h2 { text-align:center; color:#13007d; }
     label { display:block; margin-top:12px; font-weight:bold; }
-    input, textarea { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
+    input, textarea, select { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
     .row { display:flex; gap:10px; }
     .row > div { flex:1; }
     button { padding:12px 20px; margin-top:15px; border:none; border-radius:8px; background:#13007d; color:white; font-weight:bold; cursor:pointer; }
@@ -38,6 +38,7 @@
   <form id="lostForm">
     <label for="email">First Asia Email</label>
     <input id="email" name="email" type="email" placeholder="s20xxxxxxxx@firstasia.edu.ph" required />
+
     <div class="row">
       <div>
         <label for="what">What (Anong nahanap?)</label>
@@ -48,6 +49,7 @@
         <input id="when" name="when" type="datetime-local" required />
       </div>
     </div>
+
     <div class="row">
       <div>
         <label for="where">Where (Saan nahanap?)</label>
@@ -58,8 +60,10 @@
         <input id="who" name="who" type="text" placeholder="Optional" />
       </div>
     </div>
+
     <label for="otherw">More Info</label>
     <input id="otherw" name="otherw" type="text" placeholder="Ex: Contains an ID card inside" />
+
     <label for="description">Description (Detalye)</label>
     <textarea id="description" name="description" rows="4" placeholder="Unique characteristics of the item (color, brand, damage, etc.)"></textarea>
 
@@ -67,9 +71,16 @@
     <div id="lockerContainer" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
     <input type="hidden" id="locker" name="locker">
 
+    <!-- Camera & Gallery -->
     <div class="camera-container">
-      <video id="camera" autoplay playsinline></video>
+      <video id="camera" autoplay playsinline style="width:100%; max-width:300px;"></video>
+      <div style="margin-top:8px;">
+        <button type="button" id="switchCam">Switch Camera</button>
+        <button type="button" id="selectGallery">Choose from Gallery</button>
+        <input type="file" id="galleryInput" accept="image/*" style="display:none;">
+      </div>
     </div>
+
     <button type="button" id="takePic">Take Picture</button>
     <canvas id="snapshot"></canvas>
     <input type="hidden" id="photo_base64" name="photo_base64">
@@ -86,67 +97,28 @@
 </div>
 
 <script>
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzSjPZSmft7QyTaTI9RWaEgmAgNibRb8ncaEC2iw_gVXoPSKtoAZ75RhWhhjz047onz/exec"; // Replace with your deployed Apps Script URL
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzSjPZSmft7QyTaTI9RWaEgmAgNibRb8ncaEC2iw_gVXoPSKtoAZ75RhWhhjz047onz/exec";
 
 const form = document.getElementById('lostForm');
-const camera = document.getElementById('camera');
-const takePic = document.getElementById('takePic');
-const snapshot = document.getElementById('snapshot');
-const preview = document.getElementById('preview');
-const photoBase64Input = document.getElementById('photo_base64');
-const summary = document.getElementById('summary');
-const submitAgain = document.getElementById('submitAgain');
-const viewReports = document.getElementById('viewReports');
 const backBtn = document.getElementById('backBtn');
 const lockerContainer = document.getElementById('lockerContainer');
 const lockerInput = document.getElementById('locker');
+const summary = document.getElementById('summary');
+const submitAgain = document.getElementById('submitAgain');
+const viewReports = document.getElementById('viewReports');
 
 backBtn.addEventListener('click', () => window.history.back());
-
-// Camera
-async function initCamera() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    camera.srcObject = stream;
-  } catch(err) {
-    console.error("Camera error:", err);
-  }
-}
-initCamera();
-
-takePic.addEventListener('click', () => {
-  const ctx = snapshot.getContext('2d');
-  snapshot.width = camera.videoWidth;
-  snapshot.height = camera.videoHeight;
-  ctx.drawImage(camera, 0, 0);
-  const dataUrl = snapshot.toDataURL('image/png');
-  photoBase64Input.value = dataUrl;
-  preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
-});
 
 // Locker system
 let lockers = [];
 let lockerSelected = null;
-
 async function fetchLockers() {
   try {
     const res = await fetch(WEB_APP_URL);
     const data = await res.json();
-
-    const usedLockers = data
-      .map(r => r["Locker"] ? parseInt(r["Locker"]) : null)
-      .filter(n => n >= 1 && n <= 8);
-
-    lockers = Array.from({ length: 8 }, (_, i) => ({
-      number: i + 1,
-      available: !usedLockers.includes(i + 1)
-    }));
-
-    if(lockerSelected !== null && !lockers[lockerSelected].available) {
-      lockerSelected = null;
-      lockerInput.value = '';
-    }
-
+    const usedLockers = data.map(r => r["Locker"] ? parseInt(r["Locker"]) : null).filter(n => n >= 1 && n <= 8);
+    lockers = Array.from({ length: 8 }, (_, i) => ({ number: i + 1, available: !usedLockers.includes(i + 1) }));
+    if(lockerSelected !== null && !lockers[lockerSelected].available) { lockerSelected = null; lockerInput.value = ''; }
     renderLockers();
   } catch(err) {
     console.error("Locker fetch error:", err);
@@ -154,7 +126,6 @@ async function fetchLockers() {
     renderLockers();
   }
 }
-
 function renderLockers() {
   lockerContainer.innerHTML = '';
   lockers.forEach((locker, i) => {
@@ -164,51 +135,85 @@ function renderLockers() {
     btn.className = 'locker-btn';
     btn.disabled = !locker.available;
     btn.style.background = locker.available ? (lockerSelected === i ? '#28a745' : '#13007d') : '#555';
-    btn.addEventListener('click', () => {
-      if(!locker.available) return;
-      lockerSelected = i;
-      lockerInput.value = locker.number;
-      renderLockers();
-    });
+    btn.addEventListener('click', () => { if(!locker.available) return; lockerSelected = i; lockerInput.value = locker.number; renderLockers(); });
     lockerContainer.appendChild(btn);
   });
 }
-
 fetchLockers();
 setInterval(fetchLockers, 5000);
 
-// Submit
-form.addEventListener('submit', (e) => {
+// Camera & Gallery
+let currentStream = null;
+let usingFrontCamera = true;
+const camera = document.getElementById('camera');
+const takePic = document.getElementById('takePic');
+const snapshot = document.getElementById('snapshot');
+const preview = document.getElementById('preview');
+const photoBase64Input = document.getElementById('photo_base64');
+const galleryInput = document.getElementById('galleryInput');
+
+async function initCamera() {
+  if(currentStream) currentStream.getTracks().forEach(track => track.stop());
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: usingFrontCamera ? "user" : "environment" } });
+    camera.srcObject = currentStream;
+    camera.style.transform = usingFrontCamera ? 'scaleX(-1)' : 'scaleX(1)';
+  } catch(err) {
+    console.error("Camera error:", err);
+    alert("Cannot access camera.");
+  }
+}
+initCamera();
+
+document.getElementById('switchCam').addEventListener('click', () => { usingFrontCamera = !usingFrontCamera; initCamera(); });
+document.getElementById('selectGallery').addEventListener('click', () => galleryInput.click());
+galleryInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event){
+    photoBase64Input.value = event.target.result;
+    preview.innerHTML = `<img src="${event.target.result}" alt="Selected Image">`;
+  }
+  reader.readAsDataURL(file);
+});
+
+takePic.addEventListener('click', () => {
+  const ctx = snapshot.getContext('2d');
+  snapshot.width = camera.videoWidth;
+  snapshot.height = camera.videoHeight;
+  if(usingFrontCamera){ ctx.translate(snapshot.width,0); ctx.scale(-1,1); }
+  ctx.drawImage(camera,0,0);
+  if(usingFrontCamera) ctx.setTransform(1,0,0,1,0,0);
+  const dataUrl = snapshot.toDataURL('image/png');
+  photoBase64Input.value = dataUrl;
+  preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
+});
+
+// Form submit
+form.addEventListener('submit', (e)=>{
   e.preventDefault();
   if(!lockerInput.value) return alert("Please choose a locker!");
-
   const submitButton = form.querySelector('button[type="submit"]');
   submitButton.disabled = true;
   submitButton.textContent = "Sending...";
-
   const fd = new FormData(form);
   const report = {};
-  ['email','what','when','where','who','otherw','description','photo_base64','locker'].forEach(k => report[k] = fd.get(k) || '');
-
-  fetch(WEB_APP_URL, { method:"POST", body: new URLSearchParams(report) })
-    .then(r => r.text())
-    .then(() => {
+  ['email','what','when','where','who','otherw','description','photo_base64','locker'].forEach(k=>report[k]=fd.get(k)||'');
+  fetch(WEB_APP_URL,{ method:"POST", body:new URLSearchParams(report) })
+    .then(r=>r.text())
+    .then(()=>{
       form.style.display='none';
       preview.innerHTML='';
       summary.style.display='block';
       summary.innerHTML = "<h2>Report Summary</h2><ul>" +
-        Object.keys(report).map(k => k==='photo_base64'?`<li><strong>Photo:</strong><br><img src="${report[k]}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>`:`<li><strong>${k}:</strong> ${report[k]}</li>`).join('') +
+        Object.keys(report).map(k=>k==='photo_base64'?`<li><strong>Photo:</strong><br><img src="${report[k]}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>`:`<li><strong>${k}:</strong> ${report[k]}</li>`).join('') +
         `</ul><p style='color:green;font-weight:bold;'>Report sent. Thank you!</p>` +
-        `<p style='color:red;font-weight:bold;'>Please get the RFID key for Locker ${lockerInput.value} and place your item inside.</p>`;
-
+        `<p style='color:red;font-weight:bold;'>Open Locker ${lockerInput.value} and place the item inside. </p>`;
       submitAgain.style.display='inline-block';
       viewReports.style.display='inline-block';
     })
-    .catch(err => {
-      alert("Error sending report: "+err);
-      submitButton.disabled=false;
-      submitButton.textContent="Send Report";
-    });
+    .catch(err=>{ alert("Error sending report: "+err); submitButton.disabled=false; submitButton.textContent="Send Report"; });
 });
 
 submitAgain.addEventListener('click', ()=>window.location.reload());
@@ -216,4 +221,3 @@ viewReports.addEventListener('click', ()=>window.location.href='foundreport.html
 </script>
 </body>
 </html>
-
