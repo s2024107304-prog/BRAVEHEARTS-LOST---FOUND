@@ -1,29 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Found Items - Bravehearts Lost & Found</title>
-  <link rel="stylesheet" type="text/css" href="lost.css">
-  <style>
-    body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0;}
-    .video-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
-    .video-background video { width:100%; height:100%; object-fit:cover; }
-    .card { background:rgba(255, 255, 255, 0.323); max-width:600px; margin:50px auto; padding:20px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.2);}
-    h2 { text-align:center; color:#13007d; }
-    label { display:block; margin-top:12px; font-weight:bold; }
-    input, textarea, select { width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid #ccc; }
-    .row { display:flex; gap:10px; }
-    .row > div { flex:1; }
-    button { padding:12px 20px; margin-top:15px; border:none; border-radius:8px; background:#13007d; color:white; font-weight:bold; cursor:pointer; }
-    button:disabled { background: #555; cursor: not-allowed; }
-    .camera-container { margin-top:15px; text-align:center; }
-    #snapshot { display:none; }
-    .preview img { max-width:220px; border:3px solid #13007d; border-radius:8px; margin-top:10px; }
-    #summary { text-align:left; margin-top:20px; }
-    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #13007d; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 10px; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .locker-btn { flex:1; margin:2px; padding:8px; border-radius:6px; font-weight:bold; color:white; }
-  </style>
+<meta charset="UTF-8">
+<title>Found Reports - Bravehearts Lost & Found</title>
+<link rel="stylesheet" href="lostreport.css">
+
+<style>
+body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0; }
+.video-background { position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; overflow:hidden; }
+.video-background video { width:100%; height:100%; object-fit:cover; }
+.overlay { position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.3); z-index:-1; }
+
+.card {
+  background:rgba(255,255,255,0.9);
+  max-width:800px;
+  margin:50px auto;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.2);
+}
+h2 { text-align:center; color:#13007d; }
+
+.grid-container {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:15px;
+  margin-top:20px;
+}
+
+.report-card {
+  background:#fff;
+  padding:12px;
+  border-radius:8px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.1);
+  cursor:pointer;
+  transition:0.2s;
+}
+.report-card:hover {
+  transform: translateY(-3px);
+  box-shadow:0 4px 15px rgba(0,0,0,0.2);
+}
+
+.report-title { font-weight:bold; color:#13007d; }
+.report-summary { font-size:14px; white-space: pre-wrap; }
+
+.modal {
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.7);
+  justify-content:center;
+  align-items:center;
+  z-index:1000;
+}
+
+.modal-content {
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  max-width:600px;
+  width:90%;
+  max-height:90%;
+  overflow-y:auto;
+  position:relative;
+}
+
+.close-btn {
+  position:absolute;
+  top:10px; right:10px;
+  background:#13007d;
+  color:white;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.photo-btn {
+  margin-top:8px;
+  padding:8px 12px;
+  background:#13007d;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+button {
+  margin-top:15px;
+  padding:12px 20px;
+  border:none;
+  border-radius:8px;
+  background:#13007d;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+</style>
 </head>
+
 <body>
 
 <div class="video-background">
@@ -31,193 +108,134 @@
     <source src="video/FAITH.mp4" type="video/mp4">
   </video>
 </div>
+<div class="overlay"></div>
 
 <div class="card">
-  <button id="backBtn">&larr; Back</button>
-  <h2>Found Item Report</h2>
-  <form id="lostForm">
-    <label for="email">First Asia Email</label>
-    <input id="email" name="email" type="email" placeholder="s20xxxxxxxx@firstasia.edu.ph" required />
+  <h2>All Submitted Found Reports</h2>
+  <div id="summary" class="grid-container">Loading reports...</div>
+  <button id="submitAnother">Submit Another Report</button>
+</div>
 
-    <div class="row">
-      <div>
-        <label for="what">What (Anong nahanap?)</label>
-        <input id="what" name="what" type="text" placeholder="Ex: wallet, phone" required />
-      </div>
-      <div>
-        <label for="when">When (Kailan nahanap?)</label>
-        <input id="when" name="when" type="datetime-local" required />
-      </div>
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="where">Where (Saan nahanap?)</label>
-        <input id="where" name="where" type="text" placeholder="Ex: 3rd floor hallway" />
-      </div>
-      <div>
-        <label for="who">Who (Kung kilala ang may-ari)</label>
-        <input id="who" name="who" type="text" placeholder="Optional" />
-      </div>
-    </div>
-
-    <label for="otherw">More Info</label>
-    <input id="otherw" name="otherw" type="text" placeholder="Ex: Contains an ID card inside" />
-
-    <label for="description">Description (Detalye)</label>
-    <textarea id="description" name="description" rows="4" placeholder="Unique characteristics of the item (color, brand, damage, etc.)"></textarea>
-
-    <label for="locker">Choose a Locker (Only 1 per report)</label>
-    <div id="lockerContainer" style="display:flex; flex-wrap:wrap; gap:5px;"></div>
-    <input type="hidden" id="locker" name="locker">
-
-    <!-- Camera & Gallery -->
-    <div class="camera-container">
-      <video id="camera" autoplay playsinline style="width:100%; max-width:300px;"></video>
-      <div style="margin-top:8px;">
-        <button type="button" id="switchCam">Switch Camera</button>
-        <button type="button" id="selectGallery">Choose from Gallery</button>
-        <input type="file" id="galleryInput" accept="image/*" style="display:none;">
-      </div>
-    </div>
-
-    <button type="button" id="takePic">Take Picture</button>
-    <canvas id="snapshot"></canvas>
-    <input type="hidden" id="photo_base64" name="photo_base64">
-    <div class="preview" id="preview"></div>
-
-    <button type="submit">Send Report</button>
-  </form>
-
-  <div id="summary" style="display:none;"></div>
-  <div style="display:flex; justify-content:center; gap:15px; margin-top:10px;">
-    <button id="submitAgain" style="display:none;">Submit Another Report</button>
-    <button id="viewReports" style="display:none;">View All Reports</button>
+<div id="reportModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" id="closeModal">Close</button>
+    <div id="modalDetails"></div>
   </div>
 </div>
 
 <script>
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZqT3FEmc_MiBcgvIwGM48qLIu5NW6b3F8aBPstp92tw48-dbI_FM8SJ573rvPGTI5/exec";
+const summaryDiv = document.getElementById('summary');
+const modal = document.getElementById('reportModal');
+const modalDetails = document.getElementById('modalDetails');
+const closeModalBtn = document.getElementById('closeModal');
+const submitAnother = document.getElementById('submitAnother');
 
-const form = document.getElementById('lostForm');
-const backBtn = document.getElementById('backBtn');
-const lockerContainer = document.getElementById('lockerContainer');
-const lockerInput = document.getElementById('locker');
-const summary = document.getElementById('summary');
-const submitAgain = document.getElementById('submitAgain');
-const viewReports = document.getElementById('viewReports');
+const JSON_URL = "https://script.google.com/macros/s/AKfycbxZqT3FEmc_MiBcgvIwGM48qLIu5NW6b3F8aBPstp92tw48-dbI_FM8SJ573rvPGTI5/exec";
 
-backBtn.addEventListener('click', () => window.history.back());
+// show first 6 letters/numbers + rest masked
+function formatEmail(email) {
+  if (!email) return "N/A";
+  const clean = email.replace(/[^a-zA-Z0-9]/g, '');
+  const first6 = clean.slice(0, 6);
+  const domainIndex = email.indexOf("@");
+  const domain = domainIndex !== -1 ? email.slice(domainIndex) : "...";
+  return first6 + domain;
+}
 
-// Locker system
-let lockers = [];
-let lockerSelected = null;
-async function fetchLockers() {
+async function loadReports() {
   try {
-    const res = await fetch(WEB_APP_URL);
-    const data = await res.json();
-    const usedLockers = data.map(r => r["Locker"] ? parseInt(r["Locker"]) : null).filter(n => n >= 1 && n <= 8);
-    lockers = Array.from({ length: 8 }, (_, i) => ({ number: i + 1, available: !usedLockers.includes(i + 1) }));
-    if(lockerSelected !== null && !lockers[lockerSelected].available) { lockerSelected = null; lockerInput.value = ''; }
-    renderLockers();
-  } catch(err) {
-    console.error("Locker fetch error:", err);
-    lockers = Array.from({ length: 8 }, (_, i) => ({ number: i + 1, available: true }));
-    renderLockers();
+    const res = await fetch(JSON_URL);
+    const reports = await res.json();
+
+    if (!reports.length) {
+      summaryDiv.innerHTML = "<p>No reports submitted yet.</p>";
+      return;
+    }
+
+    summaryDiv.innerHTML = "";
+
+    reports.forEach((data, idx) => {
+      const card = document.createElement('div');
+      card.className = 'report-card';
+
+      const normalizedData = {};
+      for (const key in data) normalizedData[key.trim()] = data[key];
+
+      const whatVal   = normalizedData.What   || "-";
+      const lockerVal = normalizedData.Locker || "Not Claimed";
+      const statusVal = normalizedData.Status || "";
+
+      const isClaimed = statusVal.toString().trim().toUpperCase() === "CLAIM";
+
+      // ONLY What and Status on summary
+      let summaryHTML = `<div class="report-title">Report #${idx + 1}</div>`;
+      summaryHTML += `<div class="report-summary"><strong>What:</strong> ${whatVal}</div>`;
+      summaryHTML += `<div class="report-summary"><strong>Status:</strong> ${lockerVal}</div>`;
+
+      card.innerHTML = summaryHTML;
+
+      // MODAL DETAILS
+      card.onclick = () => {
+        let html = `<h3>Report #${idx + 1}</h3>`;
+
+        const fields = [
+          "Timestamp","Email","What",
+          "When","Where","Who","More info",
+          "Description","Locker","Photo"
+        ];
+
+        fields.forEach(field => {
+          let value = normalizedData[field] || "N/A";
+
+          if (field === "Email") {
+            value = formatEmail(value);
+          }
+
+          // hide photo if claimed
+          if (field === "Photo" && isClaimed) return;
+
+          if (field === "Photo") {
+            if (value && value !== "N/A" && value.trim() !== "") {
+              html += `
+                <div>
+                  <strong>${field}:</strong><br>
+                  <button class="photo-btn"
+                    onclick="window.open('${value}', '_blank')">
+                    View Photo
+                  </button>
+                </div>`;
+            } else {
+              html += `<div><strong>${field}:</strong> N/A</div>`;
+            }
+            return;
+          }
+
+          html += `
+            <div>
+              <strong>${field}:</strong>
+              <span style="white-space: pre-wrap;">${value}</span>
+            </div>`;
+        });
+
+        modalDetails.innerHTML = html;
+        modal.style.display = 'flex';
+      };
+
+      summaryDiv.appendChild(card);
+    });
+
+  } catch (err) {
+    console.error(err);
+    summaryDiv.innerHTML = "<p>Error loading reports.</p>";
   }
 }
-function renderLockers() {
-  lockerContainer.innerHTML = '';
-  lockers.forEach((locker, i) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = `Locker ${locker.number}`;
-    btn.className = 'locker-btn';
-    btn.disabled = !locker.available;
-    btn.style.background = locker.available ? (lockerSelected === i ? '#28a745' : '#13007d') : '#555';
-    btn.addEventListener('click', () => { if(!locker.available) return; lockerSelected = i; lockerInput.value = locker.number; renderLockers(); });
-    lockerContainer.appendChild(btn);
-  });
-}
-fetchLockers();
-setInterval(fetchLockers, 5000);
 
-// Camera & Gallery
-let currentStream = null;
-let usingFrontCamera = true;
-const camera = document.getElementById('camera');
-const takePic = document.getElementById('takePic');
-const snapshot = document.getElementById('snapshot');
-const preview = document.getElementById('preview');
-const photoBase64Input = document.getElementById('photo_base64');
-const galleryInput = document.getElementById('galleryInput');
+closeModalBtn.onclick = () => modal.style.display = 'none';
+window.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+submitAnother.onclick = () => window.location.href = 'index.html';
 
-async function initCamera() {
-  if(currentStream) currentStream.getTracks().forEach(track => track.stop());
-  try {
-    currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: usingFrontCamera ? "user" : "environment" } });
-    camera.srcObject = currentStream;
-    camera.style.transform = usingFrontCamera ? 'scaleX(-1)' : 'scaleX(1)';
-  } catch(err) {
-    console.error("Camera error:", err);
-    alert("Cannot access camera.");
-  }
-}
-initCamera();
-
-document.getElementById('switchCam').addEventListener('click', () => { usingFrontCamera = !usingFrontCamera; initCamera(); });
-document.getElementById('selectGallery').addEventListener('click', () => galleryInput.click());
-galleryInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event){
-    photoBase64Input.value = event.target.result;
-    preview.innerHTML = `<img src="${event.target.result}" alt="Selected Image">`;
-  }
-  reader.readAsDataURL(file);
-});
-
-takePic.addEventListener('click', () => {
-  const ctx = snapshot.getContext('2d');
-  snapshot.width = camera.videoWidth;
-  snapshot.height = camera.videoHeight;
-  if(usingFrontCamera){ ctx.translate(snapshot.width,0); ctx.scale(-1,1); }
-  ctx.drawImage(camera,0,0);
-  if(usingFrontCamera) ctx.setTransform(1,0,0,1,0,0);
-  const dataUrl = snapshot.toDataURL('image/png');
-  photoBase64Input.value = dataUrl;
-  preview.innerHTML = `<img src="${dataUrl}" alt="Snapshot">`;
-});
-
-// Form submit
-form.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  if(!lockerInput.value) return alert("Please choose a locker!");
-  const submitButton = form.querySelector('button[type="submit"]');
-  submitButton.disabled = true;
-  submitButton.textContent = "Sending...";
-  const fd = new FormData(form);
-  const report = {};
-  ['email','what','when','where','who','otherw','description','photo_base64','locker'].forEach(k=>report[k]=fd.get(k)||'');
-  fetch(WEB_APP_URL,{ method:"POST", body:new URLSearchParams(report) })
-    .then(r=>r.text())
-    .then(()=>{
-      form.style.display='none';
-      preview.innerHTML='';
-      summary.style.display='block';
-      summary.innerHTML = "<h2>Report Summary</h2><ul>" +
-        Object.keys(report).map(k=>k==='photo_base64'?`<li><strong>Photo:</strong><br><img src="${report[k]}" style="max-width:300px;border:2px solid #13007d;border-radius:8px;"></li>`:`<li><strong>${k}:</strong> ${report[k]}</li>`).join('') +
-        `</ul><p style='color:green;font-weight:bold;'>Report sent. Thank you!</p>` +
-        `<p style='color:red;font-weight:bold;'>Open Locker ${lockerInput.value} and place the item inside. </p>`;
-      submitAgain.style.display='inline-block';
-      viewReports.style.display='inline-block';
-    })
-    .catch(err=>{ alert("Error sending report: "+err); submitButton.disabled=false; submitButton.textContent="Send Report"; });
-});
-
-submitAgain.addEventListener('click', ()=>window.location.reload());
-viewReports.addEventListener('click', ()=>window.location.href='foundreport.html');
+loadReports();
 </script>
+
 </body>
 </html>
